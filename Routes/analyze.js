@@ -17,7 +17,7 @@ router.post("/analyze",async (req,res) =>{
             return res.status(400).json({message : "Enter a correct URL:"});
         }
 
-        const cachedValue = await client.get('urls');
+        const cachedValue = await client.get(`urls:${reqId}`);
         if(cachedValue)
         {
             return res.status(200).json({message : "URL response generated", data : JSON.parse(cachedValue)});
@@ -25,25 +25,29 @@ router.post("/analyze",async (req,res) =>{
 
         //if not cahced then check in DB and cache it as well
         fetchedURL = await pool.query(
-            `SELECT (url,status, checked, reqid) from urls where url = $1`,
-            [link]
+            `SELECT (url,status, checked, reqid) from urls where url = $1 and reqid = $2`,
+            [link, reqId]
         );
 
         result = "success";
         //database entry
-        if(!fetchedURL){
+        if(fetchedURL.rows.length === 0){
                 saved = await pool.query(
                 `INSERT INTO urls (url, status, checked, reqid) VALUES ($1, $2, $3, $4)
                 RETURNING id, url, status, checked, reqid `,
                 [link, result, "Yes", reqId ]
             );
             
-            await client.set('urls', JSON.stringify(saved));
+            await client.set(`urls:${reqId}`, JSON.stringify(saved));
+            //client.expire(36000);
             return res.status(200).json({message : "URL response generated", data: saved});
         }
 
         else{
-            await client.set('urls', JSON.stringify(fetchedURL));
+            await client.set(
+                `urls:${reqId}`, JSON.stringify(fetchedURL)
+            );
+           // client.expire(36000);
             return res.status(200).json({message : "URL response generated", data: fetchedURL});
         }
     }
