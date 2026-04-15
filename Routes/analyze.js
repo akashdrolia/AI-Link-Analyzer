@@ -36,7 +36,7 @@ router.post("/analyze",async (req,res) =>{
             [link, reqId]
         );
         
-        //get ai response
+        //get the response from the AI
         aiResult = await getAiResponse(link);
         
         result = "success";
